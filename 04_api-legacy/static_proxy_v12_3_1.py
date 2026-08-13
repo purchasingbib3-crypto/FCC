@@ -30,6 +30,14 @@ def inject_patch(path: str, data: bytes) -> bytes:
 
 
 class Handler(BaseHandler):
+    def do_HEAD(self):
+        if self.path.startswith("/api/"):
+            self._proxy("HEAD")
+            return
+        if self.path.startswith("/downloads/"):
+            return super().do_HEAD()
+        self._serve_static()
+
     def _serve_static(self):
         if self.path.split("?", 1)[0].startswith("/field"):
             self._serve_field_static()
