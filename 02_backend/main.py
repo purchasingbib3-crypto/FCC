@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
@@ -41,7 +42,7 @@ async def lifespan(_: FastAPI):
     close_pool()
 
 
-app = FastAPI(title="Fuel Control Center PPA-BIB", version="2026.08.13-reporting-v12.3-fast-import", lifespan=lifespan)
+app = FastAPI(title="Fuel Control Center PPA-BIB", version="2026.08.14-reporting-v12.3.1-fast-frontend", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
@@ -68,9 +69,37 @@ candidates = [
     bundle_root / "frontend",                 # compatibility bundle layout
 ]
 static_root = next((p for p in candidates if p.is_dir() and (p / "index.html").is_file()), None)
+_FAST_IMPORT_PATCH_TAG = '<script src="/v12_3_1_fast_import_patch.js?v=20260814"></script>'
+
+
+def _patched_frontend_html() -> str:
+    if static_root is None:
+        return "Frontend index.html tidak ditemukan."
+    html = (static_root / "index.html").read_text(encoding="utf-8")
+    if _FAST_IMPORT_PATCH_TAG in html:
+        return html
+    marker = "</body>"
+    if marker in html:
+        return html.replace(marker, f"{_FAST_IMPORT_PATCH_TAG}\n{marker}", 1)
+    return html + _FAST_IMPORT_PATCH_TAG
+
 
 if static_root:
     log.info("Serving canonical FCC frontend from: %s", static_root)
+
+    # Explicit index routes inject the V12.3.1 runtime patch without duplicating
+    # the giant canonical index.html. Static assets remain served from one source.
+    @app.get("/", include_in_schema=False)
+    @app.get("/index.html", include_in_schema=False)
+    @app.get("/field", include_in_schema=False)
+    @app.get("/field/", include_in_schema=False)
+    @app.get("/field/index.html", include_in_schema=False)
+    def frontend_index() -> HTMLResponse:
+        return HTMLResponse(
+            _patched_frontend_html(),
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
+
     # Bookmarks can keep using /field; root serves the same single source of truth.
     app.mount("/field", StaticFiles(directory=static_root, html=True), name="field")
     app.mount("/", StaticFiles(directory=static_root, html=True), name="frontend")

@@ -1,5 +1,5 @@
 [Unit]
-Description=FCC PPA-BIB Static + API Proxy
+Description=FCC PPA-BIB Static + API Proxy V12.3.1
 After=network.target fcc-api.service
 
 [Service]
@@ -8,7 +8,7 @@ User=fcc
 Group=fcc
 WorkingDirectory=/opt/fcc/current
 EnvironmentFile=/etc/fcc/fcc.env
-ExecStart=/opt/fcc/current/.venv/bin/python /opt/fcc/current/04_api-legacy/static_proxy.py
+ExecStart=/opt/fcc/current/.venv/bin/python /opt/fcc/current/04_api-legacy/static_proxy_v12_3_1.py
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
