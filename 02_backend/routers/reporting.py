@@ -169,17 +169,22 @@ def _ambiguous_rows(period: str) -> list[dict[str, Any]]:
 
 
 def _master_diagnostics() -> dict[str, Any]:
-    units = fetch_all("SELECT kode,nama,vendor_kode,kategori,status FROM fcc.master_unit WHERE status='ACTIVE' ORDER BY kode")
-    aliases = fetch_all(
-        """
-        SELECT id,unit_standar,alias_ss6,alias_sap,vendor_kode,kategori,status
-        FROM fcc.unit_alias WHERE status='ACTIVE' ORDER BY unit_standar,id
-        """
-    )
+    # V12.4: alias_ss6, alias_sap digabung ke master_unit sebagai ARRAY
+    units = fetch_all("""
+        SELECT kode, nama, vendor_kode, kategori, status, alias_ss6, alias_sap, alias_count
+        FROM fcc.master_unit WHERE status='ACTIVE' ORDER BY kode
+    """)
+    # Build alias list from array columns (unest di Python)
+    aliases = []
+    for row in units:
+        for alias in (row.get("alias_ss6") or []):
+            aliases.append({"unit_standar": row["kode"], "alias_ss6": alias, "alias_sap": None, "status": "ACTIVE"})
+        for alias in (row.get("alias_sap") or []):
+            aliases.append({"unit_standar": row["kode"], "alias_ss6": None, "alias_sap": alias, "status": "ACTIVE"})
     master_codes = {str(row.get("kode") or "") for row in units if row.get("kode")}
     standards_with_alias = {str(row.get("unit_standar") or "") for row in aliases if row.get("unit_standar")}
     missing = [row for row in units if str(row.get("kode") or "") not in standards_with_alias]
-    orphan = [row for row in aliases if str(row.get("unit_standar") or "") not in master_codes]
+    orphan = []  # V12.4: no more orphan alias (all alias tied to master_unit)
 
     normalized: dict[str, set[str]] = defaultdict(set)
     alias_examples: dict[str, set[str]] = defaultdict(set)

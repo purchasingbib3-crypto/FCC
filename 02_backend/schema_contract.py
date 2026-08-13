@@ -12,8 +12,7 @@ REQUIRED: dict[str, set[str]] = {
     "fuel_profiles": {"id", "app_user_id", "nrp", "role", "status"},
     "fuel_import_row": {"batch_id", "sumber", "tanggal", "alias_unit", "unit_standar", "liter", "quantity_source_l", "volume_net_l", "shift", "storage_location", "source_row", "source_format", "source_record_id", "movement_type", "material", "uom", "mapping_status"},
     "import_batch": {"id", "sumber", "periode", "status", "total_baris", "baris_valid", "baris_tolak", "imported_at", "source_format", "date_from", "date_to", "baris_mapped", "baris_unmapped", "baris_ambiguous"},
-    "master_unit": {"kode", "nama", "vendor_kode", "kategori", "status"},
-    "unit_alias": {"id", "unit_standar", "alias_ss6", "alias_sap", "status"},
+    "master_unit": {"kode", "nama", "vendor_kode", "kategori", "status", "alias_ss6", "alias_sap", "alias_count"},
     "voucher_bib": {"id", "no_voucher", "tanggal", "unit_kode", "liter", "status"},
     "fuel_route_master": {"id", "site_code", "jalur_id", "tandon_id", "peruntukan", "active"},
     "fuel_tera_tangki_grid": {"site_code", "unit_code", "volumes_json"},
@@ -32,9 +31,15 @@ REQUIRED: dict[str, set[str]] = {
 def schema_contract_status() -> dict:
     rows = fetch_all(
         """
-        SELECT table_name,column_name
-        FROM information_schema.columns
-        WHERE table_schema=%s AND table_name = ANY(%s)
+        SELECT c.relname AS table_name, a.attname AS column_name
+        FROM pg_attribute a
+        JOIN pg_class c ON c.oid=a.attrelid
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname=%s
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+          AND c.relkind IN ('r', 'p')
+          AND c.relname = ANY(%s)
         """,
         (settings.database_schema, list(REQUIRED)),
     )

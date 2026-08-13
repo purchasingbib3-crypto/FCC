@@ -37,7 +37,6 @@ TABLE_MAP: dict[str, str] = {
     # Canonical/legacy business family
     "master_vendor": "master_vendor",
     "master_unit": "master_unit",
-    "unit_alias": "unit_alias",
     "ft_mandar_ocean": "ft_mandar_ocean",
     "master_jalur": "master_jalur",
     "master_main_tank": "master_main_tank",

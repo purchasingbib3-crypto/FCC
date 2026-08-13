@@ -60,12 +60,24 @@ def _validate_period(period: str, parsed: list[ParsedRow]) -> str:
 
 
 def _alias_map() -> tuple[dict[str, str], dict[str, dict[str, Any]], set[str]]:
+    # V12.4: master_unit dengan alias_ss6, alias_sap sebagai ARRAY. Unnest jadi individual rows.
     rows = fetch_all(
-        sql.SQL(
-            "SELECT ua.unit_standar, ua.alias_ss6, ua.alias_sap, ua.vendor_kode, ua.kategori, "
-            "mu.nama, mu.vendor_kode AS master_vendor, mu.kategori AS master_kategori "
-            "FROM {} ua LEFT JOIN {} mu ON mu.kode=ua.unit_standar WHERE COALESCE(ua.status,'ACTIVE')='ACTIVE'"
-        ).format(qualified("unit_alias"), qualified("master_unit"))
+        sql.SQL("""
+            SELECT mu.kode AS unit_standar,
+                   mu.nama,
+                   mu.vendor_kode,
+                   mu.kategori,
+                   mu.status,
+                   alias_element.alias_value,
+                   alias_element.alias_kind
+            FROM fcc.master_unit mu
+            CROSS JOIN LATERAL (
+                SELECT alias_ss6 AS alias_value, 'ss6' AS alias_kind FROM unnest(mu.alias_ss6) AS alias_ss6
+                UNION ALL
+                SELECT alias_sap AS alias_value, 'sap' AS alias_kind FROM unnest(mu.alias_sap) AS alias_sap
+            ) alias_element
+            WHERE mu.status = 'ACTIVE'
+        """)
     )
     aliases_by_key: dict[str, set[str]] = {}
     masters: dict[str, dict[str, Any]] = {}
@@ -73,11 +85,16 @@ def _alias_map() -> tuple[dict[str, str], dict[str, dict[str, Any]], set[str]]:
         canonical = str(row.get("unit_standar") or "").replace("\xa0", " ").strip()
         if not canonical or not normalize_unit(canonical):
             continue
-        # Matching uses a separator-free key, but unit_standar must remain the
-        # canonical master code exactly as stored in master_unit/unit_alias.
-        masters[canonical] = row
-        for value in (row.get("unit_standar"), row.get("alias_ss6"), row.get("alias_sap")):
-            alias = normalize_unit(value)
+        if canonical not in masters:
+            masters[canonical] = {
+                "unit_standar": canonical,
+                "nama": row.get("nama"),
+                "vendor_kode": row.get("vendor_kode"),
+                "kategori": row.get("kategori"),
+            }
+        alias_value = row.get("alias_value")
+        if alias_value:
+            alias = normalize_unit(alias_value)
             if alias:
                 aliases_by_key.setdefault(alias, set()).add(canonical)
     ambiguous = {alias for alias, standards in aliases_by_key.items() if len(standards) > 1}

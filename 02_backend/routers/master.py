@@ -49,13 +49,7 @@ SPECS: dict[str, MasterSpec] = {
     "main-tanks": MasterSpec("master_main_tank", "kode", ("kode", "nama", "kapasitas_l", "status", "created_at", "updated_at"), "kode", ("created_at", "updated_at")),
     "fuel-trucks": MasterSpec("master_fuel_truck", "kode", ("kode", "nama", "tipe", "kapasitas_l", "status", "created_at", "updated_at"), "kode", ("created_at", "updated_at")),
     "routes": MasterSpec("master_jalur", "kode", ("kode", "nama", "tujuan", "peruntukan", "site", "status", "created_at", "updated_at"), "kode", ("created_at", "updated_at")),
-    "unit-aliases": MasterSpec(
-        "unit_alias",
-        "id",
-        ("id", "unit_standar", "alias_ss6", "alias_sap", "vendor_kode", "kategori", "status", "created_at", "updated_at"),
-        "unit_standar",
-        ("id", "created_at", "updated_at"),
-    ),
+
     "supply-plans": MasterSpec(
         "fuel_supply_plan",
         "id",

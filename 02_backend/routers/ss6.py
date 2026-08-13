@@ -19,22 +19,22 @@ settings = get_settings()
 
 
 def _master_maps() -> tuple[dict[str, dict], dict[str, str]]:
+    # V12.4: alias_ss6, alias_sap adalah ARRAY column di master_unit
     units = fetch_all(
-        sql.SQL("SELECT kode,nama,vendor_kode,kategori,status FROM {} WHERE status='ACTIVE'").format(
+        sql.SQL("SELECT kode,nama,vendor_kode,kategori,status,alias_ss6,alias_sap FROM {} WHERE status='ACTIVE'").format(
             qualified("master_unit")
-        )
-    )
-    aliases = fetch_all(
-        sql.SQL("SELECT unit_standar,alias_ss6,alias_sap FROM {} WHERE status='ACTIVE'").format(
-            qualified("unit_alias")
         )
     )
     by_unit = {normalize_unit(u["kode"]): u for u in units}
     alias_map: dict[str, str] = {}
-    for row in aliases:
-        standard = normalize_unit(row["unit_standar"])
-        for value in (row.get("unit_standar"), row.get("alias_ss6"), row.get("alias_sap")):
-            key = normalize_unit(value)
+    for row in units:
+        standard = normalize_unit(row["kode"])
+        for alias in (row.get("alias_ss6") or []):
+            key = normalize_unit(alias)
+            if key:
+                alias_map[key] = standard
+        for alias in (row.get("alias_sap") or []):
+            key = normalize_unit(alias)
             if key:
                 alias_map[key] = standard
     for key in by_unit:

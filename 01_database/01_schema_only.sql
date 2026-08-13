@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GhGgB4hPEIFl7xATe8bjYxQnqZWrHb1q1OyCzkFh3Wu1cQq5RLKiaFdzSI9U6sZ
+\restrict qLGxYPWq617cTilJJ2FxMjdnonDrwZc3bBKH02vqztEmttLgoRAGOErsahRPE1C
 
 -- Dumped from database version 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)
@@ -1486,6 +1486,9 @@ CREATE TABLE fcc.master_unit (
     vendor_kode text NOT NULL,
     kategori text NOT NULL,
     status text DEFAULT 'ACTIVE'::text NOT NULL,
+    alias_ss6 text[],
+    alias_sap text[],
+    alias_count integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT master_unit_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text])))
@@ -1863,38 +1866,6 @@ END) STORED,
 
 ALTER TABLE fcc.transfer_fuel ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME fcc.transfer_fuel_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: unit_alias; Type: TABLE; Schema: fcc; Owner: -
---
-
-CREATE TABLE fcc.unit_alias (
-    id bigint NOT NULL,
-    unit_standar text NOT NULL,
-    alias_ss6 text,
-    alias_sap text,
-    vendor_kode text,
-    kategori text,
-    status text DEFAULT 'ACTIVE'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT unit_alias_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text])))
-);
-
-
---
--- Name: unit_alias_id_seq; Type: SEQUENCE; Schema: fcc; Owner: -
---
-
-ALTER TABLE fcc.unit_alias ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME fcc.unit_alias_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2456,36 +2427,6 @@ CREATE VIEW fcc.v_pengurasan AS
 
 
 --
--- Name: v_rekonsiliasi; Type: VIEW; Schema: fcc; Owner: -
---
-
-CREATE VIEW fcc.v_rekonsiliasi AS
- SELECT r.tanggal,
-    r.unit_standar,
-    u.nama AS unit_nama,
-    u.vendor_kode,
-    u.kategori,
-    r.ss6_l,
-    r.sap_l,
-    round((COALESCE(r.sap_l, (0)::numeric) - COALESCE(r.ss6_l, (0)::numeric)), 3) AS delta_l,
-    abs(round((COALESCE(r.sap_l, (0)::numeric) - COALESCE(r.ss6_l, (0)::numeric)), 3)) AS abs_delta_l,
-        CASE
-            WHEN (r.ss6_l IS NULL) THEN 'HANYA SAP'::text
-            WHEN (r.sap_l IS NULL) THEN 'HANYA SS6'::text
-            WHEN (abs((r.sap_l - r.ss6_l)) <= 0.01) THEN 'MATCH'::text
-            ELSE 'SELISIH'::text
-        END AS status
-   FROM (( SELECT fuel_import_row.tanggal,
-            fuel_import_row.unit_standar,
-            sum(fuel_import_row.volume_net_l) FILTER (WHERE (fuel_import_row.sumber = 'SS6'::text)) AS ss6_l,
-            sum(fuel_import_row.volume_net_l) FILTER (WHERE (fuel_import_row.sumber = 'SAP'::text)) AS sap_l
-           FROM fcc.fuel_import_row
-          WHERE ((fuel_import_row.unit_standar IS NOT NULL) AND (fuel_import_row.mapping_status = 'MAPPED'::text))
-          GROUP BY fuel_import_row.tanggal, fuel_import_row.unit_standar) r
-     LEFT JOIN fcc.master_unit u ON ((u.kode = r.unit_standar)));
-
-
---
 -- Name: voucher_bib; Type: TABLE; Schema: fcc; Owner: -
 --
 
@@ -2913,11 +2854,11 @@ ALTER TABLE ONLY fcc.master_main_tank
 
 
 --
--- Name: master_unit master_unit_pkey; Type: CONSTRAINT; Schema: fcc; Owner: -
+-- Name: master_unit master_unit_v124_pkey; Type: CONSTRAINT; Schema: fcc; Owner: -
 --
 
 ALTER TABLE ONLY fcc.master_unit
-    ADD CONSTRAINT master_unit_pkey PRIMARY KEY (kode);
+    ADD CONSTRAINT master_unit_v124_pkey PRIMARY KEY (kode);
 
 
 --
@@ -3054,14 +2995,6 @@ ALTER TABLE ONLY fcc.transfer_fuel
 
 ALTER TABLE ONLY fcc.transfer_fuel
     ADD CONSTRAINT transfer_fuel_pkey PRIMARY KEY (id);
-
-
---
--- Name: unit_alias unit_alias_pkey; Type: CONSTRAINT; Schema: fcc; Owner: -
---
-
-ALTER TABLE ONLY fcc.unit_alias
-    ADD CONSTRAINT unit_alias_pkey PRIMARY KEY (id);
 
 
 --
@@ -3291,6 +3224,20 @@ CREATE INDEX ix_fuel_import_row_source_format ON fcc.fuel_import_row USING btree
 
 
 --
+-- Name: master_unit_alias_sap_idx; Type: INDEX; Schema: fcc; Owner: -
+--
+
+CREATE INDEX master_unit_alias_sap_idx ON fcc.master_unit USING gin (alias_sap);
+
+
+--
+-- Name: master_unit_alias_ss6_idx; Type: INDEX; Schema: fcc; Owner: -
+--
+
+CREATE INDEX master_unit_alias_ss6_idx ON fcc.master_unit USING gin (alias_ss6);
+
+
+--
 -- Name: master_unit_vendor_idx; Type: INDEX; Schema: fcc; Owner: -
 --
 
@@ -3351,20 +3298,6 @@ CREATE UNIQUE INDEX sounding_main_tank_client_request_uidx ON fcc.sounding_main_
 --
 
 CREATE INDEX transfer_fuel_tgl_idx ON fcc.transfer_fuel USING btree (tanggal DESC, shift, fuel_truck);
-
-
---
--- Name: unit_alias_sap_uq; Type: INDEX; Schema: fcc; Owner: -
---
-
-CREATE UNIQUE INDEX unit_alias_sap_uq ON fcc.unit_alias USING btree (upper(alias_sap)) WHERE ((alias_sap IS NOT NULL) AND (status = 'ACTIVE'::text));
-
-
---
--- Name: unit_alias_ss6_uq; Type: INDEX; Schema: fcc; Owner: -
---
-
-CREATE UNIQUE INDEX unit_alias_ss6_uq ON fcc.unit_alias USING btree (upper(alias_ss6)) WHERE ((alias_ss6 IS NOT NULL) AND (status = 'ACTIVE'::text));
 
 
 --
@@ -3760,20 +3693,6 @@ CREATE TRIGGER trg_transfer_volume BEFORE INSERT OR UPDATE ON fcc.transfer_fuel 
 
 
 --
--- Name: unit_alias trg_unit_alias_audit; Type: TRIGGER; Schema: fcc; Owner: -
---
-
-CREATE TRIGGER trg_unit_alias_audit AFTER INSERT OR DELETE OR UPDATE ON fcc.unit_alias FOR EACH ROW EXECUTE FUNCTION fcc.audit_row();
-
-
---
--- Name: unit_alias trg_unit_alias_touch; Type: TRIGGER; Schema: fcc; Owner: -
---
-
-CREATE TRIGGER trg_unit_alias_touch BEFORE UPDATE ON fcc.unit_alias FOR EACH ROW EXECUTE FUNCTION fcc.set_updated_at();
-
-
---
 -- Name: fuel_route_master trg_validate_fuel_route_master; Type: TRIGGER; Schema: fcc; Owner: -
 --
 
@@ -4020,22 +3939,6 @@ ALTER TABLE ONLY fcc.transfer_fuel
 
 
 --
--- Name: unit_alias unit_alias_unit_standar_fkey; Type: FK CONSTRAINT; Schema: fcc; Owner: -
---
-
-ALTER TABLE ONLY fcc.unit_alias
-    ADD CONSTRAINT unit_alias_unit_standar_fkey FOREIGN KEY (unit_standar) REFERENCES fcc.master_unit(kode) ON UPDATE CASCADE;
-
-
---
--- Name: unit_alias unit_alias_vendor_kode_fkey; Type: FK CONSTRAINT; Schema: fcc; Owner: -
---
-
-ALTER TABLE ONLY fcc.unit_alias
-    ADD CONSTRAINT unit_alias_vendor_kode_fkey FOREIGN KEY (vendor_kode) REFERENCES fcc.master_vendor(kode);
-
-
---
 -- Name: refuelling; Type: ROW SECURITY; Schema: fcc; Owner: -
 --
 
@@ -4059,5 +3962,5 @@ CREATE POLICY refuelling_vendor ON fcc.refuelling FOR SELECT TO fcc_app USING ((
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GhGgB4hPEIFl7xATe8bjYxQnqZWrHb1q1OyCzkFh3Wu1cQq5RLKiaFdzSI9U6sZ
+\unrestrict qLGxYPWq617cTilJJ2FxMjdnonDrwZc3bBKH02vqztEmttLgoRAGOErsahRPE1C
 
