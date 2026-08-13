@@ -1,0 +1,20 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+psycopg[binary,pool]==3.2.3
+pydantic==2.9.2
+pydantic-settings==2.6.0
+python-multipart==0.0.12
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+argon2-cffi==23.1.0
+itsdangerous==2.2.0
+httpx==0.27.2
+requests==2.32.3
+openpyxl==3.1.5
+python-dotenv==1.0.1
+
+# Legacy SAP/SS6 .xls import support
+xlrd==2.0.1
+
+# Fast Rust-backed XLS/XLSX validation engine (V12.3); xlrd/openpyxl remain fallbacks.
+python-calamine==0.8.2

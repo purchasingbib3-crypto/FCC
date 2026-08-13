@@ -1,0 +1,19 @@
+Fuel Control Center PPA-BIB
+Release: V12.3 FAST Import Engine
+Build date: 2026-08-13
+Backend version: 2026.08.13-reporting-v12.3-fast-import
+Runtime frontend: 03_frontend/index.html
+Runtime backend: 02_backend/main.py
+Legacy/static proxy (if used): 04_api-legacy/static_proxy.py
+Latest database migration: 01_database/08_reporting_canonical_volume_v12_2.sql
+Database migration required by V12.3: NONE (uses V12.2 schema)
+Primary production formats: SS6_REFUELING (.xls) + SAP_MB51 (.xlsx)
+Fast parser: python-calamine 0.8.2; fallback xlrd/openpyxl
+Validation: parse once -> in-memory mapping -> compressed validation token cache
+Commit: validation token -> PostgreSQL COPY (no re-upload, no re-parse)
+Validation cache TTL: 1800 seconds default
+Canonical reporting quantity: volume_net_l
+Mapping states: MAPPED / UNMAPPED / AMBIGUOUS
+Match tolerance: 0.01 L
+Canonical test gate: bash 06_tests/run_all_checks.sh
+Live connectivity gate: bash 06_tests/check_upload_connectivity.sh

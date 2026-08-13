@@ -1,0 +1,18 @@
+[Unit]
+Description=FCC PPA-BIB FastAPI
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=fcc
+Group=fcc
+WorkingDirectory=/opt/fcc/current
+EnvironmentFile=/etc/fcc/fcc.env
+ExecStart=/opt/fcc/current/.venv/bin/python /opt/fcc/current/02_backend/run_api.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
