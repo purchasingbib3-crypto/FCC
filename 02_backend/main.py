@@ -90,8 +90,10 @@ if static_root:
     # Explicit index routes inject the V12.3.1 runtime patch without duplicating
     # the giant canonical index.html. Static assets remain served from one source.
     @app.get("/", include_in_schema=False)
+    @app.get("/index.html", include_in_schema=False)
     @app.get("/field", include_in_schema=False)
     @app.get("/field/", include_in_schema=False)
+    @app.get("/field/index.html", include_in_schema=False)
     def frontend_index() -> HTMLResponse:
         return HTMLResponse(
             _patched_frontend_html(),
